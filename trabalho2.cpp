@@ -62,7 +62,7 @@ string temp_atributo = "";
 string nome_palavra = "";
 vector<Token> tabela_simbolos = {};
 Token simbolo_adicionado; 
-vector<string> palavras_reservadas = {"program", "procedure", "begin", "end", "true", "false", "if", "then", "else", "while", "do", "not", "var", "and", "or", "int", "div"};
+vector<string> palavras_reservadas = {"program", "procedure", "begin", "end", "true", "false", "if", "then", "else", "while", "do", "not", "var", "and", "or", "int", "div", "read", "write"};
 int simbolo_presente = 0; // variavel que controla se um simbolo ja existe na tabela. eh zero caso ele nao exista, um caso exista
 int palavra_reservada; // variavel utilizada para verificar se um token eh uma palavra reservada. eh o indice no vetor de palavras, caso seja. eh -1, caso nao seja
 int indice_palavra; // indice que indica a posicao na palavra nos vetores de simbolo
@@ -338,6 +338,7 @@ Token proximo_token()
 				if (check_palavra_reservada(temp_atributo) < 0){ 
 				// se a palavra nao for reservada
 					Token simbolo_adicionado;
+					nome_palavra = copia_temp_atributo(temp_atributo); // copia do nome da palavra
 					simbolo_adicionado.nome_token = temp_atributo;
 					simbolo_adicionado.atributo = cont_linhas;
 					indice_palavra = busca_simbolo(simbolo_adicionado);
@@ -353,7 +354,7 @@ Token proximo_token()
 				} else {
 				// se a palavra for reservada
 					cout << "<" << palavras_reservadas[check_palavra_reservada(temp_atributo)] <<", >\n";
-					nome_palavra = copia_temp_atributo(temp_atributo);
+					nome_palavra = copia_temp_atributo(temp_atributo); // copia do nome da palavra
 					temp_atributo = "";	
 					nome = ID;
 					token.nome_token = to_string(nome);
@@ -907,38 +908,198 @@ Token proximo_token()
 	return(token);
 }
 
-// ajeitar quando elementos estão corretos mas tem qtd de tokens menor que fases
+// ajeitar quando há virgula sem variavel após dela
+// DECLARAÇÕES
+void declaracao_variaveis (Token token, int numero_token) {
+	cout << "Entrou em declaracao_variaveis\n"; // comeca em int
+	switch(numero_token) { 
+		case 4: // para "gastar" token atual int
+			cout << "CASE 4:\n";
+			cout << "if to_string: " << to_string(nome_constante) << "\n";
+			cout << "token.nome_token: " << token.nome_token << "\n";
+			cout << nome_palavra << "\n";
+			fase_atual = 5;
+			break;
+		case 5: // encontrar variavel
+			fase_atual = 8;
+			nome_constante = ID;
+			cout << "CASE 5:\n";
+			cout << "if to_string: " << to_string(nome_constante) << "\n";
+			cout << "token.nome_token: " << token.nome_token << "\n";
+			cout << nome_palavra << "\n";
+			
+			if (token.nome_token != to_string(nome_constante) || check_palavra_reservada(nome_palavra) != -1) {
+				cout << "NOME DA VARIAVEL:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
+				lista_erros.push_back("- nome da variavel esperado.\n"); // nao encontrou variavel
 
-void declaracao_variaveis (Token token, int numero_tokens) {
-	cout << "Entrou em declaracao_variaveis\n";
+				// como nao encontrou, vai procurar ;
+				fase_atual = 8;
+				numero_token = 8;
+				declaracao_variaveis(token, numero_token);
+			}
+			break;
+		case 6: // se for direto uma variavel sem virgula
+			fase_atual = 7;
+			cout << "CASE 6:\n";
+			cout << "token.nome_token: " << token.nome_token << "\n";
+			cout << nome_palavra << "\n";
+			
+			// se for direto uma variavel sem virgula
+			nome_constante = ID;
+			if (check_palavra_reservada(nome_palavra) != -1) {
+				cout << "VARIAVEL SEM VIRGULA:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
+				lista_erros.push_back("- , esperado na declaracao entre variaveis.\n");
+				fase_atual = 7; // procura proximo token
+			} 
+			break;
+		case 7: // se for virgula
+			nome_constante = COMMA;
+			if (token.nome_token == to_string(nome_constante)) { // aqui fase 4 (,)
+				cout << "VIRGULA:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
+
+				fase_atual = 5; // se identificou (,), volta para fase 5 (identificador)
+			}
+			break;
+		case 8: // se for ;
+			fase_atual = 9;
+			nome_constante = SEMICOLON;
+			if (token.nome_token == to_string(nome_constante)) {
+				cout << "PONTO E VIRGULA:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
+				fase_atual = 7;
+			} else {
+				fase_atual = 7;
+				lista_erros.push_back("- ; esperado no final da declaracao das variaveis.\n");
+			}
+
+			break;
+	}
+}
+
+void declaracao_procedimento (Token token, int numero_token) {
+	cout << "Entrou em declaracao_procedimento\n";
+	switch (numero_token) {
+		case 6: // nome do procedimento (identificador)
+			fase_atual = 7;
+			nome_constante = ID;
+			
+			if (token.nome_token != to_string(nome_constante) || check_palavra_reservada(nome_palavra) != -1) {
+				lista_erros.push_back("- nome do procedimento esperado.\n");
+			}
+			break;
+	}
 }
 
 void declaracao_subrotinas (Token token, int numero_token) {
-	cout << "Entrou em declaracao_subrotinas\n";
+	cout << "Entrou em declaracao_subrotinas\n"; // comeca em procedure
+	switch (numero_token) {
+		case 6: 
+			declaracao_procedimento(token, numero_token);
+			break;
+	}
+}
+
+// COMANDOS
+void atribuicao (Token token, int numero_token) {
+	cout << "Entrou em atribuicao\n";
+}
+
+void chamada_procedimento (Token token, int numero_token) {
+	cout << "Entrou em chamada_procedimento\n"; // comeca em procedure
+	
+}
+
+void comando_condicional (Token token, int numero_token) {
+	cout << "Entrou em comando_condicional\n";
+}
+
+void comando_repetitivo (Token token, int numero_token) {
+	cout << "Entrou em comando_repetitivo\n";
+}
+
+void comando (Token token, int numero_token) {
+	cout << "Entrou em comando\n";
+	switch(numero_token) {
+		case 40:
+			fase_atual = 50;
+			nome_constante = ID;
+		
+			// Atribuicao
+			if (token.nome_token == to_string(nome_constante) && check_palavra_reservada(nome_palavra) == -1) {
+				atribuicao(token, numero_token);
+			}
+
+			// Chamada de procedimento
+
+			// Comando composto
+
+			// Comando condicional
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "if") {
+				comando_condicional(token, numero_token);
+			}
+
+			// Comando repetitivo
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "while") {
+				comando_condicional(token, numero_token);
+			}
+
+			break;
+	}
 }
 
 void comando_composto (Token token, int numero_token) {
 	cout << "Entrou em comando_composto\n";
+	switch(numero_token) { // <comando>
+		case 30:
+			comando(token, numero_token);
+			break;
+		
+		case 100: // última etapa (end)
+			nome_constante = ID;
+			if (token.nome_token != to_string(nome_constante) || nome_palavra == "end") {
+				lista_erros.push_back("- end esperado no final do comando composto.\n");
+			} 
+	}
 }
 
 void bloco (Token token, int numero_token) {
+	cout << "Entrou em bloco\n";
 	switch(numero_token) {
 		case 3:
-			fase_atual = 4;
+			fase_atual = 120; // 120 apenas para exemplo => alterar
+			numero_token = fase_atual;
 			nome_constante = ID;
 
 			if (token.nome_token == to_string(nome_constante) && nome_palavra == "int") {
+				fase_atual = 4;
+				numero_token = 4;
 				declaracao_variaveis(token, numero_token);
 			} 
 			
 			else if (token.nome_token == to_string(nome_constante) && nome_palavra == "procedure") {
+				// fase_atual = 7;
 				declaracao_subrotinas(token, numero_token);
 			} 
 			
 			else if (token.nome_token == to_string(nome_constante) && nome_palavra == "begin") {
+				// fase_atual = 15;
 				comando_composto(token, numero_token);
-
-				//lista_erros.push_back("- begin esperado no início do bloco.\n");
+			} 
+			
+			else {
+				//cout << nome_palavra << "\n";
+				lista_erros.push_back("- begin esperado no início do bloco.\n");
 			}
 
 			break;
@@ -946,6 +1107,7 @@ void bloco (Token token, int numero_token) {
 }
 
 void programa (Token token, int numero_token) {
+	cout << "Entrou em programa\n";
 	switch(numero_token) {
 		case 0: // program
 			fase_atual = 1;
@@ -953,30 +1115,38 @@ void programa (Token token, int numero_token) {
 			if (token.nome_token != to_string(nome_constante) || nome_palavra != "program") {
 				lista_erros.push_back("- program esperado.\n");
 
-				//numero_token = 1;
-				//programa(token, numero_token);
+				numero_token = 1;
+				programa(token, numero_token); // caso não tenha program, retorna para a mesma funcao, mas em outra fase
 			}
 			break;
 		case 1: // nome do programa
 			fase_atual = 2;
 			nome_constante = ID;
-			if (token.nome_token != to_string(nome_constante)) {
+			if (token.nome_token != to_string(nome_constante) || check_palavra_reservada(nome_palavra) != -1) {
+				cout << "NOME DO PROGRAMA:\n";
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
 				lista_erros.push_back("- nome do programa (id) esperado.\n");
 
-				//numero_token = 2;
-				//programa(token, numero_token);
+				numero_token = 2;
+				programa(token, numero_token); // caso não tenha nome, retorna para a mesma funcao, mas em outra fase
 			}
 			break;
 		case 2: // ;
 			fase_atual = 3;
 			nome_constante = SEMICOLON;
 			if (token.nome_token != to_string(nome_constante)) {
+				cout << "SEMICOLON:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
 				lista_erros.push_back("- ; esperado após nome do programa.\n");
+
+				numero_token = 3;
+				bloco(token, numero_token); // caso não tenha ;, vai direto para a função bloco
 			}
 			break;
-		
+
 	}
 }
 
@@ -992,6 +1162,12 @@ void analise_sintatica (Token token) {
 		case 3:
 			bloco(token, fase_atual);
 			break;
+		case 4:
+		case 5:
+		case 6:
+			declaracao_variaveis(token, fase_atual);
+			break;
+		
 	}
 }
 

@@ -1,2 +1,5 @@
 program correto;
+int ;
+teste
+
 .
