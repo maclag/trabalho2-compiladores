@@ -908,20 +908,20 @@ Token proximo_token()
 	return(token);
 }
 
-// ajeitar quando há virgula sem variavel após dela
+// ajeitar ;
 // DECLARAÇÕES
 void declaracao_variaveis (Token token, int numero_token) {
 	cout << "Entrou em declaracao_variaveis\n"; // comeca em int
 	switch(numero_token) { 
-		case 4: // para "gastar" token atual int
+		case 4: // para "gastar" token atual (int)
 			cout << "CASE 4:\n";
 			cout << "if to_string: " << to_string(nome_constante) << "\n";
 			cout << "token.nome_token: " << token.nome_token << "\n";
 			cout << nome_palavra << "\n";
 			fase_atual = 5;
 			break;
-		case 5: // encontrar variavel
-			fase_atual = 8;
+		case 5: // encontrar 1ª variavel
+			fase_atual = 6;
 			nome_constante = ID;
 			cout << "CASE 5:\n";
 			cout << "if to_string: " << to_string(nome_constante) << "\n";
@@ -935,29 +935,51 @@ void declaracao_variaveis (Token token, int numero_token) {
 				cout << nome_palavra << "\n";
 				lista_erros.push_back("- nome da variavel esperado.\n"); // nao encontrou variavel
 
-				// como nao encontrou, vai procurar ;
+				// como nao encontrou o nome da variavel, vai procurar verificar se token é ;
 				fase_atual = 8;
 				numero_token = 8;
 				declaracao_variaveis(token, numero_token);
 			}
 			break;
-		case 6: // se for direto uma variavel sem virgula
-			fase_atual = 7;
+		case 6: { // apos a 1 variavel, tenta encontrar outra variavel, (,) ou (;)
+			fase_atual = 8; // se após variavel verificar se é ponto e virgula
 			cout << "CASE 6:\n";
 			cout << "token.nome_token: " << token.nome_token << "\n";
-			cout << nome_palavra << "\n";
-			
-			// se for direto uma variavel sem virgula
+
+			// casos em que nao seja ;:
+			// - se for direto a uma outra variavel sem virgula
 			nome_constante = ID;
-			if (check_palavra_reservada(nome_palavra) != -1) {
-				cout << "VARIAVEL SEM VIRGULA:\n";
+			if (token.nome_token == to_string(nome_constante) && check_palavra_reservada(nome_palavra) == -1) {
+				cout << "OUTRA VARIAVEL:\n";
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
-				lista_erros.push_back("- , esperado na declaracao entre variaveis.\n");
-				fase_atual = 7; // procura proximo token
-			} 
+				lista_erros.push_back("- , esperado na declaracao entre variaveis.\n"); // nao encontrou virgula entre variaveis
+
+				// token atual eh o id => vai para o proximo token
+				fase_atual = 6;
+			} else {
+				fase_atual = 8;
+				numero_token = 8;
+				declaracao_variaveis(token, numero_token);
+			}
+
+			// - se for virgula
+			nome_constante = COMMA;
+			if (token.nome_token == to_string(nome_constante)) {
+				cout << "COMMA CASE 6:\n";
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				cout << nome_palavra << "\n";
+				fase_atual = 7;
+			} else { // como não encontra id, nem (,) => procura ;
+				fase_atual = 8;
+				numero_token = 8;
+				declaracao_variaveis(token, numero_token);
+			}
 			break;
+		}
+
 		case 7: // se for virgula
 			nome_constante = COMMA;
 			if (token.nome_token == to_string(nome_constante)) { // aqui fase 4 (,)
@@ -966,20 +988,21 @@ void declaracao_variaveis (Token token, int numero_token) {
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
 
-				fase_atual = 5; // se identificou (,), volta para fase 5 (identificador)
+				fase_atual = 6; // se identificou (,), volta para fase 6 (identificador)
 			}
 			break;
+
 		case 8: // se for ;
 			fase_atual = 9;
+
 			nome_constante = SEMICOLON;
 			if (token.nome_token == to_string(nome_constante)) {
 				cout << "PONTO E VIRGULA:\n";
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
-				fase_atual = 7;
 			} else {
-				fase_atual = 7;
+				cout << "- ; esperado no final da declaracao das variaveis.\n";
 				lista_erros.push_back("- ; esperado no final da declaracao das variaveis.\n");
 			}
 
@@ -1165,6 +1188,8 @@ void analise_sintatica (Token token) {
 		case 4:
 		case 5:
 		case 6:
+		case 7:
+		case 8:
 			declaracao_variaveis(token, fase_atual);
 			break;
 		

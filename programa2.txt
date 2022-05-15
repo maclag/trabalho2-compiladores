@@ -1,5 +1,3 @@
 program correto;
-int ;
-teste
-
+int a b
 .
