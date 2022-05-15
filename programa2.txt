@@ -1,3 +1,5 @@
 program correto;
-int a b
+int a;
+int b;
+procedure soma1(a;
 .
