@@ -907,43 +907,18 @@ Token proximo_token()
 	return(token);
 }
 
-
-void programa (Token token, int numero_token) {
-	switch(numero_token) {
-		case 0:
-			fase_atual = 1;
-			nome_constante = ID;
-			if (token.nome_token != to_string(nome_constante) || nome_palavra != "program") {
-				lista_erros.push_back("- program esperado.\n");
-
-				numero_token = 1;
-				programa(token, 1);
-			}
-			break;
-		case 1:
-			fase_atual = 2;
-			nome_constante = ID;
-			if (token.nome_token != to_string(nome_constante)) {
-				//cout << "to_string do if: " << to_string(nome_constante) << "\n";
-				//cout << "token.nome_token: " << token.nome_token << "\n";
-				lista_erros.push_back("- nome do programa (id) esperado.\n");
-
-				numero_token = 2;
-				programa(token, 2);
-			}
-			break;
-		case 2:
-			fase_atual = 3;
-			nome_constante = SEMICOLON;
-			if (token.nome_token != to_string(nome_constante)) {
-				lista_erros.push_back("- ; esperado após nome do programa.\n");
-			}
-			break;
-	}
-}
+// ajeitar quando elementos estão corretos mas tem qtd de tokens menor que fases
 
 void declaracao_variaveis (Token token, int numero_tokens) {
-	
+	cout << "Entrou em declaracao_variaveis\n";
+}
+
+void declaracao_subrotinas (Token token, int numero_token) {
+	cout << "Entrou em declaracao_subrotinas\n";
+}
+
+void comando_composto (Token token, int numero_token) {
+	cout << "Entrou em comando_composto\n";
 }
 
 void bloco (Token token, int numero_token) {
@@ -951,18 +926,64 @@ void bloco (Token token, int numero_token) {
 		case 3:
 			fase_atual = 4;
 			nome_constante = ID;
+
 			if (token.nome_token == to_string(nome_constante) && nome_palavra == "int") {
 				declaracao_variaveis(token, numero_token);
-			} else if (token.nome_token != to_string(nome_constante) || nome_palavra != "begin") {
-				lista_erros.push_back("- begin esperado no início do bloco.\n");
+			} 
+			
+			else if (token.nome_token == to_string(nome_constante) && nome_palavra == "procedure") {
+				declaracao_subrotinas(token, numero_token);
+			} 
+			
+			else if (token.nome_token == to_string(nome_constante) && nome_palavra == "begin") {
+				comando_composto(token, numero_token);
+
+				//lista_erros.push_back("- begin esperado no início do bloco.\n");
 			}
+
 			break;
 	}
 }
 
+void programa (Token token, int numero_token) {
+	switch(numero_token) {
+		case 0: // program
+			fase_atual = 1;
+			nome_constante = ID;
+			if (token.nome_token != to_string(nome_constante) || nome_palavra != "program") {
+				lista_erros.push_back("- program esperado.\n");
+
+				//numero_token = 1;
+				//programa(token, numero_token);
+			}
+			break;
+		case 1: // nome do programa
+			fase_atual = 2;
+			nome_constante = ID;
+			if (token.nome_token != to_string(nome_constante)) {
+				cout << "if to_string: " << to_string(nome_constante) << "\n";
+				cout << "token.nome_token: " << token.nome_token << "\n";
+				lista_erros.push_back("- nome do programa (id) esperado.\n");
+
+				//numero_token = 2;
+				//programa(token, numero_token);
+			}
+			break;
+		case 2: // ;
+			fase_atual = 3;
+			nome_constante = SEMICOLON;
+			if (token.nome_token != to_string(nome_constante)) {
+				lista_erros.push_back("- ; esperado após nome do programa.\n");
+			}
+			break;
+		
+	}
+}
+
+
 // ANÁLISE SINTÁTICA
 void analise_sintatica (Token token) {
-	switch(fase_atual) {
+	switch (fase_atual) {
 		case 0:
 		case 1:
 		case 2:
@@ -993,7 +1014,7 @@ int main ()
 			cout <<  tabela_simbolos[i].nome_token << "|" << tabela_simbolos[i].atributo << "\n";
 		}	
 	}
-	
+
 	cout << "\nANÁLISE SINTÁTICA\n";
 	if (lista_erros.empty()) {
 		cout << "Não há erros sintáticos.\n";
