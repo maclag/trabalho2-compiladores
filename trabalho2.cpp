@@ -42,11 +42,17 @@ using namespace std;
 #define CHAVE_CLOSE 279; // }
 
 struct Token{
- string nome_token;
- int atributo;
+	string nome_token;
+	int atributo;
 };
 
-int nome = 0;
+// ANÁLISE SINTÁTICA----------------
+int nome = 0; // nome referente às constantes para funcao proximo_token()
+int nome_constante = 0; // nome referente às constantes para funcao analise_sintatica
+int fase_atual = 0;
+vector<string> lista_erros = {}; // listagem de erros sintáticos
+// ---------------------------------
+
 int estado = 0;
 int partida = 0;
 int cont_sim_lido = 0;
@@ -902,34 +908,68 @@ Token proximo_token()
 }
 
 
-// ANÁLISE SINTÁTICA
-void analise_sintatica (Token token, int posicao) {
-	//cout << token.nome_token + "\n";
-	int nome = 0;
-	switch(posicao) {
+void programa (Token token, int numero_token) {
+	switch(numero_token) {
 		case 0:
-			nome = ID;
-			if (token.nome_token == to_string(nome) && nome_palavra == "program") { // 260 == ID
-				//cout << "Correto: program encontrado\n";
-			} else {
-				cout << "ERRO: program esperado\n";
+			fase_atual = 1;
+			nome_constante = ID;
+			if (token.nome_token != to_string(nome_constante) || nome_palavra != "program") {
+				lista_erros.push_back("- program esperado.\n");
+
+				numero_token = 1;
+				programa(token, 1);
 			}
 			break;
 		case 1:
-			nome = ID;
-			if (token.nome_token == to_string(nome)) { // atributo de id = 1
-				//cout << "Correto: nome do programa encontrado\n";
-			} else {
-				cout << "ERRO: nome do programa esperado\n";
+			fase_atual = 2;
+			nome_constante = ID;
+			if (token.nome_token != to_string(nome_constante)) {
+				//cout << "to_string do if: " << to_string(nome_constante) << "\n";
+				//cout << "token.nome_token: " << token.nome_token << "\n";
+				lista_erros.push_back("- nome do programa (id) esperado.\n");
+
+				numero_token = 2;
+				programa(token, 2);
 			}
 			break;
 		case 2:
-			nome = SEMICOLON;
-			if (token.nome_token == to_string(nome)) {
-				//cout << "Correto: ; encontrado\n";
-			} else {
-				cout << "ERRO: ; esperado\n";
+			fase_atual = 3;
+			nome_constante = SEMICOLON;
+			if (token.nome_token != to_string(nome_constante)) {
+				lista_erros.push_back("- ; esperado após nome do programa.\n");
 			}
+			break;
+	}
+}
+
+void declaracao_variaveis (Token token, int numero_tokens) {
+	
+}
+
+void bloco (Token token, int numero_token) {
+	switch(numero_token) {
+		case 3:
+			fase_atual = 4;
+			nome_constante = ID;
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "int") {
+				declaracao_variaveis(token, numero_token);
+			} else if (token.nome_token != to_string(nome_constante) || nome_palavra != "begin") {
+				lista_erros.push_back("- begin esperado no início do bloco.\n");
+			}
+			break;
+	}
+}
+
+// ANÁLISE SINTÁTICA
+void analise_sintatica (Token token) {
+	switch(fase_atual) {
+		case 0:
+		case 1:
+		case 2:
+			programa(token, fase_atual);
+			break;
+		case 3:
+			bloco(token, fase_atual);
 			break;
 	}
 }
@@ -939,15 +979,28 @@ int main ()
 	Token token;
 	code = readFile("programa2.txt");    
 
-	int posicao = 0;
 	while (code[cont_sim_lido] != '\0'){
 		token = proximo_token();
-		analise_sintatica(token, posicao);
-		posicao++;
+		cout << token.nome_token << "\n";
+		analise_sintatica(token);
 	}	
 	
-	cout << "\nTABELA DE SIMBOLOS\n\n";
-	for (int i = 0; i < tabela_simbolos.size(); i++){
-		cout <<  tabela_simbolos[i].nome_token << "|" << tabela_simbolos[i].atributo << "\n";
-	}	
+	cout << "\nTABELA DE SIMBOLOS\n";
+	if (tabela_simbolos.empty()) {
+		cout<<"Tabela vazia.\n";
+	} else {
+		for (int i = 0; i < tabela_simbolos.size(); i++){
+			cout <<  tabela_simbolos[i].nome_token << "|" << tabela_simbolos[i].atributo << "\n";
+		}	
+	}
+	
+	cout << "\nANÁLISE SINTÁTICA\n";
+	if (lista_erros.empty()) {
+		cout << "Não há erros sintáticos.\n";
+	} else {
+		for (int i = 0; i < lista_erros.size(); i++) {
+				cout << lista_erros[i];
+		}
+	}
+	
 }
