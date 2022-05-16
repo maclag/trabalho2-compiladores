@@ -1,4 +1,7 @@
-program correto;
-int a;
-int b;
+program ;
+int a
+int ;
+begin
+a := b
+end
 .

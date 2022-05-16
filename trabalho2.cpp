@@ -41,7 +41,7 @@ using namespace std;
 #define CHAVE_OPEN 278; // {
 #define CHAVE_CLOSE 279; // }
 
-struct Token{
+struct Token {
 	string nome_token;
 	int atributo;
 };
@@ -50,6 +50,8 @@ struct Token{
 int nome = 0; // nome referente às constantes para funcao proximo_token()
 int nome_constante = 0; // nome referente às constantes para funcao analise_sintatica
 int fase_atual = 0;
+vector<string> nome_procedimentos = {};
+vector<string> nome_variaveis = {};
 vector<string> lista_erros = {}; // listagem de erros sintáticos
 // ---------------------------------
 
@@ -734,7 +736,8 @@ Token proximo_token()
 
 			case 44:
 				//cout << "o valor de c atualmente eh: " << c << '\n';
-				//cout << "entrei no 44\n";		
+				//cout << "entrei no 44\n";
+				nome_palavra = ":="; // copia do nome da palavra	
 				cont_sim_lido++;	
 				cout << "<:=, > \n";
 				nome = ATTRIBUTION;
@@ -953,6 +956,8 @@ void declaracao_variaveis (Token token, int numero_token) {
 				fase_atual = 8;
 				numero_token = 8;
 				declaracao_variaveis(token, numero_token);
+			} else {
+				nome_variaveis.push_back(nome_palavra);
 			}
 			break;
 		case 6: { // apos a 1 variavel, tenta encontrar outra variavel, (,) ou (;)
@@ -968,6 +973,8 @@ void declaracao_variaveis (Token token, int numero_token) {
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
+
+				nome_variaveis.push_back(nome_palavra);
 
 				lista_erros.push_back("- , esperado na declaracao entre variaveis.\n"); // nao encontrou virgula entre variaveis
 
@@ -1073,6 +1080,9 @@ void parametros_formais (Token token, int numero_token) {
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
+				
+				nome_procedimentos.push_back(nome_palavra);
+
 				lista_erros.push_back("- id esperado nos parênteses do procedimento.\n");
 
 				// como nao encontrou o nome da variavel de procedure, vai procurar verificar se token é ')'
@@ -1094,6 +1104,9 @@ void parametros_formais (Token token, int numero_token) {
 				cout << "if to_string: " << to_string(nome_constante) << "\n";
 				cout << "token.nome_token: " << token.nome_token << "\n";
 				cout << nome_palavra << "\n";
+
+				nome_procedimentos.push_back(nome_palavra);
+
 				lista_erros.push_back("- , esperado na declaracao entre variaveis de procedure.\n"); // nao encontrou virgula entre variaveis
 
 				// token atual eh o id => vai para o proximo token
@@ -1176,6 +1189,8 @@ void declaracao_procedimento (Token token, int numero_token) {
 
 				numero_token = 11;
 				declaracao_procedimento(token, numero_token);
+			} else {
+
 			}
 			break;
 		case 11: // verifica se encontra (
@@ -1239,24 +1254,24 @@ void declaracao_subrotinas (Token token, int numero_token) {
 void atribuicao (Token token, int numero_token) {
 	cout << "Entrou em atribuicao\n";
 	switch(numero_token) {
-		case 20: // :=
-			fase_atual = 21;
+		case 60: // :=
+			fase_atual = 61;
 
 			cout << "CASE 20 - (:=):\n";
 			cout << "if to_string: " << to_string(nome_constante) << "\n";
 			cout << "token.nome_token: " << token.nome_token << "\n";
 			cout << nome_palavra << "\n";
 
-			nome_constante = ATTRIBUTION;
+			nome_constante = ID;
 			if (token.nome_token != to_string(nome_constante)) {
-				lista_erros.push_back("- comando de atribuicao (:=) esperado.");
+				lista_erros.push_back("- comando de atribuicao (:=) esperado.\n");
 
-				numero_token = 21;
+				numero_token = 61;
 				atribuicao(token, numero_token);
 			}
 			break;
-		case 21: // expressao
-			fase_atual = 22;
+		case 61: { // expressao
+			fase_atual = 62;
 
 			cout << "CASE 21 (expressao):\n";
 			cout << "if to_string: " << to_string(nome_constante) << "\n";
@@ -1264,13 +1279,29 @@ void atribuicao (Token token, int numero_token) {
 			cout << nome_palavra << "\n";
 
 			nome_constante = ID;
-			if (token.nome_token != to_string(nome_constante)) {
+			int nome_constante2 = NUM;
+			if (check_palavra_reservada(nome_palavra) != -1) {
+				if (token.nome_token != to_string(nome_constante) || token.nome_token != to_string(nome_constante2))
 				lista_erros.push_back("- expressao esperada apos comando de atribuicao.\n");
 
-				numero_token = 21;
+				numero_token = 62;
 				atribuicao(token, numero_token);
 			}
 			break;
+		}
+		case 62: // ;
+			fase_atual = 63;
+
+			nome_constante = SEMICOLON;
+			if (token.nome_token != to_string(nome_constante)) {
+				lista_erros.push_back("- ; esperado apos comando de atribuicao.\n");
+
+				fase_atual = 3; // volta para comando
+				numero_token = 3;
+			}
+
+			break;
+
 	}
 }
 
@@ -1281,6 +1312,25 @@ void chamada_procedimento (Token token, int numero_token) {
 
 void comando_condicional (Token token, int numero_token) {
 	cout << "Entrou em comando_condicional\n";
+	switch (numero_token) {
+		case 21: // consumir if
+			fase_atual = 22;
+			numero_token = 22;
+			break;
+		case 22: { // verificar se é expressao (variavel, numero, id)
+			fase_atual = 22;
+			nome_constante = ID;
+			int nome_constante2 = NUM;
+
+			// if (token.nome_token != to_string(nome_constante) 
+			// 	|| token.nome != to_string
+			// 	|| check_palavra_reservada(nome_palavra) != -1) {
+				
+			// }
+
+			break;
+		}
+	}
 }
 
 void comando_repetitivo (Token token, int numero_token) {
@@ -1290,40 +1340,64 @@ void comando_repetitivo (Token token, int numero_token) {
 void comando (Token token, int numero_token) {
 	cout << "Entrou em comando\n";
 	switch(numero_token) {
-		case 19:
+		case 20:
 			cout << "Case 19\n";
 			cout<<nome_palavra << "\n";
-			fase_atual = 20;
-			numero_token = fase_atual;
+			cout << "nome token: " << token.nome_token << "\n";
+			fase_atual = 21;
+			numero_token = 21;
 			nome_constante = ID;
 		
-			// Atribuicao
-			if (token.nome_token == to_string(nome_constante)) {
-				cout<< "Case 19 - atribuicao\n";
-				atribuicao(token, numero_token);
-			} 
-			
-			// nome_constante = ATTRIBUTION;
-			// if (token.nome_token == to_string(nome_constante)) {
-			// 	lista_erros.push_back("- variavel esperada antes comando de atribuicao.\n");
-			// 	// fase_atual = 21;
-			// 	// numero_token = fase_atual;
-			// 	// atribuicao(token, numero_token);
-			// }
-
-			// Chamada de procedimento
-
 			// Comando composto
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "begin") {
+				cout << "Entrou em comando_composto de comando\n";
+				comando_composto(token, 18);
+
+				// apos comando_composto
+				fase_atual = 21;
+				numero_token = 21;
+			}
 
 			// Comando condicional
 			if (token.nome_token == to_string(nome_constante) && nome_palavra == "if") {
+				cout << "Entrou em comando_condicional de comando\n";
+				
 				comando_condicional(token, numero_token);
+			}
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "then") {
+				lista_erros.push_back("- if esperado no inicio do comando condicional.\n");
+				lista_erros.push_back("- expressao esperada no comando condicional.\n");
+			}
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "else") {
+				lista_erros.push_back("- if esperado no inicio do comando condicional.\n");
+				lista_erros.push_back("- expressao depois do if esperada no comando condicional.\n");
+				lista_erros.push_back("- then esperado no comando condicional.\n");
+				lista_erros.push_back("- expressao depois do then esperada no comando condicional.\n");
 			}
 
 			// Comando repetitivo
-			if (token.nome_token == to_string(nome_constante) && nome_palavra == "while") {
-				comando_condicional(token, numero_token);
+			else if (token.nome_token == to_string(nome_constante) && nome_palavra == "while") {
+				comando_repetitivo(token, numero_token);
+			} 
+			if (token.nome_token == to_string(nome_constante) && nome_palavra == "do") {
+				lista_erros.push_back("- while esperado no inicio do comando repetitivo.\n");
+				lista_erros.push_back("- expressao esperada no comando repetitivo.\n");
+			} 
+
+			// Atribuicao
+			else if (token.nome_token == to_string(nome_constante) && check_palavra_reservada(nome_palavra) == -1) {
+				cout<< "Case 19 - atribuicao\n";
+				fase_atual = 60;
+				numero_token = 60;
+				atribuicao(token, numero_token);
+			} 
+
+			// Chamada de procedimento
+			else {
+				chamada_procedimento(token, numero_token);
 			}
+
+			
 
 			break;
 	}
@@ -1338,9 +1412,13 @@ void comando_composto (Token token, int numero_token) {
 			cout << "token.nome_token: " << token.nome_token << "\n";
 			cout << nome_palavra << "\n";
 
-			fase_atual = 19;
-			numero_token = 19;
-			comando(token, numero_token);
+			fase_atual = 20;
+			numero_token = 20;
+			//comando(token, numero_token);
+			break;
+		case 19: // não é begin, apenas procurar proximo token
+			fase_atual = 20;
+			numero_token = 20;
 			break;
 		case 100: // última etapa (end)
 			nome_constante = ID;
@@ -1372,13 +1450,16 @@ void bloco (Token token, int numero_token) {
 				fase_atual = 18;
 				numero_token = 18;
 				comando_composto(token, numero_token);
-			} else {
+			} 
+			
+			else {
 				lista_erros.push_back("- begin esperado no início do bloco.\n");
-				fase_atual = 18;
-				numero_token = 18;
+				fase_atual = 19;
+				numero_token = 19;
 			}
 
 			break;
+
 	}
 }
 
@@ -1452,8 +1533,26 @@ void analise_sintatica (Token token) {
 			declaracao_procedimento(token, fase_atual);
 			break;
 		case 18:
+		case 19:
 			comando_composto(token, fase_atual);
 			break;
+		case 20:
+			comando(token, fase_atual);
+			break;
+		case 22:
+			comando_condicional(token, fase_atual);
+			break;
+		case 50:
+			comando_repetitivo(token, fase_atual);
+			break;
+		case 61:
+		case 62:
+			atribuicao(token, fase_atual);
+			break;
+		case 70:
+			chamada_procedimento(token, fase_atual);
+			break;
+
 		
 	}
 }
